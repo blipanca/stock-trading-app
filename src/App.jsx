@@ -20,7 +20,7 @@ const rupiah = (n) =>
 const num = (n) => Math.round(n).toLocaleString("id-ID");
 const num2 = (n) => (Math.round(n * 100) / 100).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const DEMO_PROFILE_NAME = "Pandu Arizona Sukmono";
+const DEMO_PROFILE_NAME = "Sukmono_82";
 
 // Fictional illustrative trend: capital deployed 8 Apr 2026, a speculative bump
 // around late May (WBSA spike), then a political-risk-driven drawdown into a
