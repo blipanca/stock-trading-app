@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
-  PieChart, ClipboardList, X, Plus, Minus, Search,
-  ArrowUpCircle, ArrowDownCircle, ChevronRight, TrendingUp, TrendingDown,
-  AlertTriangle, Ban, UserCircle2, Mail
+  PieChart, ClipboardList, ChevronRight, TrendingUp,
+  AlertTriangle, Ban, UserCircle2
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, YAxis } from "recharts";
 
@@ -132,7 +131,7 @@ function Modal({ title, onClose, children }) {
 function StatCell({ label, value, color }) {
   return (
     <div>
-      <p className="text-sm font-semibold" style={{ color: color || TEXT }}>{value}</p>
+      <p className="text-[13px] sm:text-sm font-semibold leading-tight break-words tabular-nums" style={{ color: color || TEXT }}>{value}</p>
       <p className="text-[11px] mt-0.5" style={{ color: MUTED }}>{label}</p>
     </div>
   );
@@ -143,10 +142,6 @@ export default function App() {
   const [cash, setCash] = useState(450000000);
   const [holdings, setHoldings] = useState(INITIAL_HOLDINGS);
   const [history, setHistory] = useState(INITIAL_HISTORY);
-  const [modal, setModal] = useState(null); // 'buy' | 'sell' | 'browse'
-  const [activeStock, setActiveStock] = useState(null);
-  const [lots, setLots] = useState(1);
-  const [buySearch, setBuySearch] = useState("");
   const [historyFilter, setHistoryFilter] = useState("all");
 
   const computed = useMemo(() => holdings.map(computeHolding), [holdings]);
@@ -161,73 +156,12 @@ export default function App() {
     setHistory((h) => [{ id: Date.now(), date: "2026-07-07 " + new Date().toLocaleTimeString("id-ID").slice(0, 5), ...entry }, ...h]);
   }
 
-  function openBuy(stock) {
-    setActiveStock(stock);
-    setLots(1);
-    setModal("buy");
-  }
-  function openSell(holding) {
-    setActiveStock(holding);
-    setLots(1);
-    setModal("sell");
-  }
-
-  function confirmBuy() {
-    const total = lots * 100 * activeStock.price;
-    if (total > cash) return;
-    setCash((c) => c - total);
-    setHoldings((prev) => {
-      const existing = prev.find((h) => h.code === activeStock.code);
-      if (existing) {
-        const newLots = existing.lots + lots;
-        const newAvg = (existing.lots * existing.avgPrice + lots * activeStock.price) / newLots;
-        return prev.map((h) => h.code === activeStock.code ? { ...h, lots: newLots, avgPrice: newAvg, currentPrice: activeStock.price } : h);
-      }
-      return [...prev, { code: activeStock.code, name: activeStock.name, lots, avgPrice: activeStock.price, currentPrice: activeStock.price }];
-    });
-    pushHistory({ type: "buy", label: `Beli ${activeStock.code}`, code: activeStock.code, lots, price: activeStock.price, amount: total });
-    setModal(null);
-  }
-
-  function confirmSell() {
-    const total = lots * 100 * activeStock.currentPrice;
-    setCash((c) => c + total);
-    setHoldings((prev) => prev
-      .map((h) => h.code === activeStock.code ? { ...h, lots: h.lots - lots } : h)
-      .filter((h) => h.lots > 0));
-    pushHistory({ type: "sell", label: `Jual ${activeStock.code}`, code: activeStock.code, lots, price: activeStock.currentPrice, amount: total });
-    setModal(null);
-  }
 
 
   const filteredHistory = history.filter((h) => historyFilter === "all" || h.type === historyFilter);
-  const filteredUniverse = STOCK_UNIVERSE.filter((s) =>
-    (s.code + s.name).toLowerCase().includes(buySearch.toLowerCase())
-  );
 
-  function buildLogMailto() {
-    const lines = [];
-    lines.push("=== Safe Mode —  ===");
-    lines.push(`Akun: ${DEMO_PROFILE_NAME}`);
-    lines.push("Diekspor pada: 7 Juli 2026");
-    lines.push("");
-    lines.push("Riwayat Transaksi (kronologis):");
-    [...history].reverse().forEach((h) => {
-      let line = `${h.date} — ${h.label}`;
-      if (h.lots) line += ` (${h.lots} lot @ ${num(h.price)})`;
-      if (h.amount != null) line += ` : ${h.type === "sell" ? "+" : (h.type === "buy" ? "-" : "")}${num(h.amount)}`;
-      lines.push(line);
-    });
-    lines.push("");
-    lines.push("Catatan: Dokumen ini adalah ilustrasi/simulasi, bukan catatan transaksi riil.");
-    const subject = encodeURIComponent(`[SIMULASI/FIKTIF] Log Transaksi — ${DEMO_PROFILE_NAME}`);
-    const body = encodeURIComponent(lines.join("\n"));
-    return `mailto:?subject=${subject}&body=${body}`;
-  }
 
   const iconFor = (type) => {
-    if (type === "buy") return <ArrowUpCircle size={20} color={GREEN} />;
-    if (type === "sell") return <ArrowDownCircle size={20} color={RED} />;
     if (type === "suspend") return <Ban size={20} color={RED} />;
     return <AlertTriangle size={20} color="#F5A524" />;
   };
@@ -242,16 +176,16 @@ export default function App() {
         <span className="text-sm font-medium" style={{ color: TEXT }}>{DEMO_PROFILE_NAME}</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-20">
+      <div className="flex-1 overflow-y-auto pb-24">
         {tab === "portfolio" && (
           <div className="px-4">
             <div className="rounded-xl border px-4 py-4 mb-4" style={{ background: CARD, borderColor: BORDER }}>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4">
                 <StatCell label="Saldo Tunai" value={num2(cash)} />
                 <StatCell label="Invested" value={num2(invested)} />
                 <StatCell label="Open" value={openPositions} />
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 mt-4">
                 <StatCell label="P&L" value={(totalPnl >= 0 ? "+" : "") + num2(totalPnl)} color={totalPnl >= 0 ? GREEN : RED} />
                 <StatCell label={totalPnlPct >= 0 ? "Gain" : "Loss"} value={totalPnlPct.toFixed(2) + "%"} color={totalPnl >= 0 ? GREEN : RED} />
                 <StatCell label="Total Equity" value={num2(totalEquity)} />
@@ -280,13 +214,6 @@ export default function App() {
 
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-semibold text-sm" style={{ color: TEXT }}>Saham Dimiliki</h2>
-              <button
-                onClick={() => setModal("browse")}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full"
-                style={{ background: GREEN, color: "#052E17" }}
-              >
-                + Beli Saham
-              </button>
             </div>
 
             <div className="rounded-xl border overflow-hidden divide-y" style={{ background: CARD, borderColor: BORDER, borderColorDivide: BORDER }}>
@@ -301,26 +228,13 @@ export default function App() {
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-1.5">
-                      {h.suspended ? (
-                        <span className="px-2.5 py-1 rounded-md text-xs font-medium" style={{ color: MUTED, background: "#1C1D20" }}>
-                          Diberhentikan
-                        </span>
-                      ) : (
-                        <>
-                          <button onClick={() => openBuy({ code: h.code, name: h.name, price: h.currentPrice })}
-                            className="px-2.5 py-1 rounded-md text-xs font-semibold" style={{ background: GREEN, color: "#052E17" }}>
-                            Beli
-                          </button>
-                          <button onClick={() => openSell(h)}
-                            className="px-2.5 py-1 rounded-md text-xs font-semibold text-white" style={{ background: RED }}>
-                            Jual
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    {h.suspended && (
+                      <span className="px-2.5 py-1 rounded-md text-xs font-medium" style={{ color: MUTED, background: "#1C1D20" }}>
+                        Diberhentikan
+                      </span>
+                    )}
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div className="grid grid-cols-1 min-[380px]:grid-cols-3 gap-2 mt-3">
                     <div>
                       <p className="text-sm" style={{ color: TEXT }}>{num2(h.invested)}</p>
                       <p className="text-[11px]" style={{ color: MUTED }}>Invested</p>
@@ -343,19 +257,9 @@ export default function App() {
 
         {tab === "history" && (
           <div className="px-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center mb-3">
               <h2 className="font-semibold text-base" style={{ color: TEXT }}>Riwayat Transaksi</h2>
-              <a
-                href={buildLogMailto()}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full"
-                style={{ background: "#1C1D20", color: TEXT, border: `1px solid ${BORDER}` }}
-              >
-                <Mail size={13} /> Kirim ke Email
-              </a>
             </div>
-            <p className="text-[11px] mb-3" style={{ color: MUTED }}>
-              Email akan menyertakan label "SIMULASI / DATA FIKTIF" di judul dan isi pesan.
-            </p>
             <div className="flex gap-2 mb-3 overflow-x-auto">
               {[
                 { k: "all", l: "Semua" }, { k: "buy", l: "Beli" }, { k: "sell", l: "Jual" },
@@ -399,7 +303,7 @@ export default function App() {
 
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t flex justify-around py-2" style={{ background: CARD, borderColor: BORDER }}>
+      <div className="fixed bottom-0 left-0 right-0 border-t flex justify-around pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" style={{ background: CARD, borderColor: BORDER }}>
         {[
           { k: "portfolio", l: "Portofolio", icon: PieChart },
           { k: "history", l: "Riwayat", icon: ClipboardList },
@@ -411,94 +315,6 @@ export default function App() {
         ))}
       </div>
 
-      {modal === "browse" && (
-        <Modal title="Beli Saham" onClose={() => setModal(null)}>
-          <div className="flex items-center gap-2 rounded-lg px-3 py-2 mb-3 border" style={{ background: "#1C1D20", borderColor: BORDER }}>
-            <Search size={16} color={MUTED} />
-            <input
-              value={buySearch}
-              onChange={(e) => setBuySearch(e.target.value)}
-              placeholder="Cari kode saham..."
-              className="bg-transparent text-sm outline-none flex-1"
-              style={{ color: TEXT }}
-            />
-          </div>
-          <div className="divide-y max-h-80 overflow-y-auto" style={{ borderColor: BORDER }}>
-            {filteredUniverse.map((s) => (
-              <button key={s.code} onClick={() => { setModal(null); openBuy(s); }}
-                className="w-full flex items-center justify-between py-3 text-left" style={{ borderColor: BORDER }}>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: TEXT }}>{s.code}</p>
-                  <p className="text-[11px]" style={{ color: MUTED }}>{s.name}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium" style={{ color: TEXT }}>{num(s.price)}</span>
-                  <ChevronRight size={16} color={MUTED} />
-                </div>
-              </button>
-            ))}
-          </div>
-        </Modal>
-      )}
-
-      {modal === "buy" && activeStock && (
-        <Modal title={`Beli ${activeStock.code}`} onClose={() => setModal(null)}>
-          <p className="text-sm mb-1" style={{ color: MUTED }}>{activeStock.name}</p>
-          <p className="text-xl font-bold mb-4" style={{ color: TEXT }}>{rupiah(activeStock.price)}<span className="text-xs font-normal" style={{ color: MUTED }}> / lembar</span></p>
-          <div className="flex items-center justify-between border rounded-lg px-3 py-2 mb-4" style={{ borderColor: BORDER }}>
-            <span className="text-sm" style={{ color: MUTED }}>Jumlah Lot</span>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setLots((l) => Math.max(1, l - 1))} className="p-1 rounded-full" style={{ background: "#1C1D20" }}><Minus size={14} color={TEXT} /></button>
-              <span className="font-semibold w-8 text-center" style={{ color: TEXT }}>{lots}</span>
-              <button onClick={() => setLots((l) => l + 1)} className="p-1 rounded-full" style={{ background: "#1C1D20" }}><Plus size={14} color={TEXT} /></button>
-            </div>
-          </div>
-          <div className="flex justify-between text-sm mb-1">
-            <span style={{ color: MUTED }}>Total Pembelian</span>
-            <span className="font-semibold" style={{ color: TEXT }}>{rupiah(lots * 100 * activeStock.price)}</span>
-          </div>
-          <div className="flex justify-between text-sm mb-4">
-            <span style={{ color: MUTED }}>Saldo Tunai Tersedia</span>
-            <span className="font-semibold" style={{ color: TEXT }}>{rupiah(cash)}</span>
-          </div>
-          {lots * 100 * activeStock.price > cash && (
-            <p className="text-xs mb-3" style={{ color: RED }}>Saldo tidak mencukupi untuk transaksi ini.</p>
-          )}
-          <button
-            onClick={confirmBuy}
-            disabled={lots * 100 * activeStock.price > cash}
-            className="w-full py-3 rounded-lg font-semibold disabled:opacity-40"
-            style={{ background: GREEN, color: "#052E17" }}
-          >
-            Konfirmasi Beli
-          </button>
-        </Modal>
-      )}
-
-      {modal === "sell" && activeStock && (
-        <Modal title={`Jual ${activeStock.code}`} onClose={() => setModal(null)}>
-          <p className="text-sm mb-1" style={{ color: MUTED }}>Lot tersedia: {activeStock.lots}</p>
-          <div className="flex items-center justify-between border rounded-lg px-3 py-2 mb-4" style={{ borderColor: BORDER }}>
-            <span className="text-sm" style={{ color: MUTED }}>Jumlah Lot</span>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setLots((l) => Math.max(1, l - 1))} className="p-1 rounded-full" style={{ background: "#1C1D20" }}><Minus size={14} color={TEXT} /></button>
-              <span className="font-semibold w-8 text-center" style={{ color: TEXT }}>{lots}</span>
-              <button onClick={() => setLots((l) => Math.min(activeStock.lots, l + 1))} className="p-1 rounded-full" style={{ background: "#1C1D20" }}><Plus size={14} color={TEXT} /></button>
-            </div>
-          </div>
-          <div className="flex justify-between text-sm mb-1">
-            <span style={{ color: MUTED }}>Harga Jual</span>
-            <span className="font-semibold" style={{ color: TEXT }}>{num(activeStock.currentPrice)}</span>
-          </div>
-          <div className="flex justify-between text-sm mb-4">
-            <span style={{ color: MUTED }}>Total Hasil Penjualan</span>
-            <span className="font-semibold" style={{ color: TEXT }}>{rupiah(lots * 100 * activeStock.currentPrice)}</span>
-          </div>
-          <button onClick={confirmSell} className="w-full py-3 rounded-lg text-white font-semibold" style={{ background: RED }}>
-            Konfirmasi Jual
-          </button>
-        </Modal>
-      )}
 
     </div>
   );
