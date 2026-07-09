@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
   PieChart, ClipboardList, ChevronRight, TrendingUp,
-  AlertTriangle, Ban, UserCircle2
+  AlertTriangle, Ban, UserCircle2, X
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, YAxis } from "recharts";
 
@@ -21,12 +21,22 @@ const num2 = (n) => (Math.round(n * 100) / 100).toLocaleString("id-ID", { minimu
 
 const DEMO_PROFILE_NAME = "Sukmono_82";
 
-// Fictional illustrative trend: capital deployed 8 Apr 2026, a speculative bump
-// around late May (WBSA spike), then a political-risk-driven drawdown into a
-// trading suspension by 2 Jul 2026.
-const EQUITY_TREND = [
-  { v: 2000000000 }, { v: 2060000000 }, { v: 2260000000 }, { v: 2180000000 },
-  { v: 1980000000 }, { v: 1800000000 }, { v: 1650000000 }, { v: 1568000000 },
+// Historical demo prices. Each series ends exactly at the holding's currentPrice.
+// Portfolio performance is calculated from these prices instead of a decorative static curve.
+const PRICE_HISTORY = [
+  { date: "8 Apr",  BBCA: 9700, BBRI: 4750, TLKM: 2800, ASII: 5200, ADRO: 2300, WBSA: 770 },
+  { date: "15 Apr", BBCA: 9825, BBRI: 4680, TLKM: 2860, ASII: 5280, ADRO: 2380, WBSA: 810 },
+  { date: "22 Apr", BBCA: 9950, BBRI: 4820, TLKM: 2910, ASII: 5350, ADRO: 2460, WBSA: 920 },
+  { date: "29 Apr", BBCA: 9875, BBRI: 4740, TLKM: 2870, ASII: 5260, ADRO: 2410, WBSA: 1080 },
+  { date: "6 Mei",  BBCA: 10050, BBRI: 4860, TLKM: 2940, ASII: 5410, ADRO: 2520, WBSA: 1350 },
+  { date: "13 Mei", BBCA: 10125, BBRI: 4790, TLKM: 2890, ASII: 5330, ADRO: 2470, WBSA: 1780 },
+  { date: "20 Mei", BBCA: 9975, BBRI: 4660, TLKM: 2810, ASII: 5190, ADRO: 2320, WBSA: 2450 },
+  { date: "27 Mei", BBCA: 9850, BBRI: 4520, TLKM: 2740, ASII: 5080, ADRO: 2180, WBSA: 1880 },
+  { date: "3 Jun",  BBCA: 9725, BBRI: 4410, TLKM: 2670, ASII: 5010, ADRO: 2020, WBSA: 1310 },
+  { date: "10 Jun", BBCA: 9580, BBRI: 4300, TLKM: 2590, ASII: 4930, ADRO: 1860, WBSA: 960 },
+  { date: "17 Jun", BBCA: 9340, BBRI: 4180, TLKM: 2510, ASII: 4860, ADRO: 1690, WBSA: 690 },
+  { date: "24 Jun", BBCA: 9125, BBRI: 4070, TLKM: 2440, ASII: 4780, ADRO: 1530, WBSA: 430 },
+  { date: "2 Jul",  BBCA: 8900, BBRI: 4000, TLKM: 2400, ASII: 4850, ADRO: 1450, WBSA: 290 },
 ];
 
 const STOCK_UNIVERSE = [
@@ -152,6 +162,25 @@ export default function App() {
   const totalEquity = cash + marketValue;
   const openPositions = computed.filter((h) => h.lots > 0).length;
 
+  const equityTrend = useMemo(() => {
+    return PRICE_HISTORY.map((point) => {
+      const stockValue = holdings.reduce((sum, h) => {
+        const historicalPrice = point[h.code] ?? h.currentPrice;
+        return sum + h.lots * 100 * historicalPrice;
+      }, 0);
+      const equity = cash + stockValue;
+      return {
+        date: point.date,
+        equity,
+        returnPct: invested ? ((stockValue - invested) / invested) * 100 : 0,
+      };
+    });
+  }, [holdings, cash, invested]);
+
+  const firstEquity = equityTrend[0]?.equity || totalEquity;
+  const lastEquity = equityTrend[equityTrend.length - 1]?.equity || totalEquity;
+  const chartChangePct = firstEquity ? ((lastEquity - firstEquity) / firstEquity) * 100 : 0;
+
   function pushHistory(entry) {
     setHistory((h) => [{ id: Date.now(), date: "2026-07-07 " + new Date().toLocaleTimeString("id-ID").slice(0, 5), ...entry }, ...h]);
   }
@@ -190,19 +219,47 @@ export default function App() {
                 <StatCell label={totalPnlPct >= 0 ? "Gain" : "Loss"} value={totalPnlPct.toFixed(2) + "%"} color={totalPnl >= 0 ? GREEN : RED} />
                 <StatCell label="Total Equity" value={num2(totalEquity)} />
               </div>
-              <div className="h-14 mt-3 -mx-1">
+              <div className="flex items-end justify-between mt-4 mb-1">
+                <div>
+                  <p className="text-[10px]" style={{ color: MUTED }}>Performa sejak 8 Apr 2026</p>
+                  <p className="text-xs font-semibold tabular-nums" style={{ color: chartChangePct >= 0 ? GREEN : RED }}>
+                    {chartChangePct >= 0 ? "+" : ""}{chartChangePct.toFixed(2)}%
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  {["1M", "3M", "ALL"].map((p) => (
+                    <span key={p} className="text-[9px] px-1.5 py-0.5 rounded"
+                      style={{ background: p === "ALL" ? "#24262A" : "transparent", color: p === "ALL" ? TEXT : MUTED }}>
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="h-24 -mx-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={EQUITY_TREND}>
+                  <AreaChart data={equityTrend} margin={{ top: 5, right: 2, bottom: 2, left: 2 }}>
                     <defs>
                       <linearGradient id="eq" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={totalPnl >= 0 ? GREEN : RED} stopOpacity={0.45} />
-                        <stop offset="100%" stopColor={totalPnl >= 0 ? GREEN : RED} stopOpacity={0} />
+                        <stop offset="0%" stopColor={chartChangePct >= 0 ? GREEN : RED} stopOpacity={0.35} />
+                        <stop offset="100%" stopColor={chartChangePct >= 0 ? GREEN : RED} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <YAxis hide domain={["dataMin - 2000000", "dataMax + 2000000"]} />
-                    <Area type="monotone" dataKey="v" stroke={totalPnl >= 0 ? GREEN : RED} strokeWidth={2} fill="url(#eq)" />
+                    <YAxis hide domain={["dataMin - 30000000", "dataMax + 30000000"]} />
+                    <Area
+                      type="linear"
+                      dataKey="equity"
+                      stroke={chartChangePct >= 0 ? GREEN : RED}
+                      strokeWidth={2}
+                      fill="url(#eq)"
+                      isAnimationActive={false}
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between -mt-1 mb-1">
+                <span className="text-[9px]" style={{ color: MUTED }}>8 Apr</span>
+                <span className="text-[9px]" style={{ color: MUTED }}>20 Mei</span>
+                <span className="text-[9px]" style={{ color: MUTED }}>2 Jul</span>
               </div>
               <button className="w-full flex items-center justify-between pt-3 mt-2 border-t" style={{ borderColor: BORDER }}>
                 <span className="flex items-center gap-2 text-sm" style={{ color: TEXT }}>
