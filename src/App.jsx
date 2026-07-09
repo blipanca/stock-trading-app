@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import {
-  PieChart, ClipboardList, Wallet, X, Plus, Minus, Search,
+  PieChart, ClipboardList, X, Plus, Minus, Search,
   ArrowUpCircle, ArrowDownCircle, ChevronRight, TrendingUp, TrendingDown,
   AlertTriangle, Ban, UserCircle2, Mail
 } from "lucide-react";
@@ -70,7 +70,7 @@ const INITIAL_HISTORY = [
   { id: 4, type: "buy", label: "Beli TLKM", code: "TLKM", lots: 1350, price: 2800, amount: 378000000, date: "2026-04-09 09:50" },
   { id: 3, type: "buy", label: "Beli BBRI", code: "BBRI", lots: 800, price: 4750, amount: 380000000, date: "2026-04-08 10:42" },
   { id: 2, type: "buy", label: "Beli BBCA", code: "BBCA", lots: 350, price: 9700, amount: 339500000, date: "2026-04-08 10:30" },
-  { id: 1, type: "deposit", label: "Setor Dana Awal", amount: 2000000000, date: "2026-04-08 09:15" },
+  { id: 1, type: "alert", label: "Saldo awal simulasi trading ditetapkan Rp450.000.000", date: "2026-04-08 09:15" },
 ];
 
 function computeHolding(h) {
@@ -140,13 +140,12 @@ function StatCell({ label, value, color }) {
 
 export default function App() {
   const [tab, setTab] = useState("portfolio");
-  const [cash, setCash] = useState(0);
+  const [cash, setCash] = useState(450000000);
   const [holdings, setHoldings] = useState(INITIAL_HOLDINGS);
   const [history, setHistory] = useState(INITIAL_HISTORY);
-  const [modal, setModal] = useState(null); // 'buy' | 'sell' | 'deposit' | 'withdraw' | 'browse'
+  const [modal, setModal] = useState(null); // 'buy' | 'sell' | 'browse'
   const [activeStock, setActiveStock] = useState(null);
   const [lots, setLots] = useState(1);
-  const [nominal, setNominal] = useState(5000000);
   const [buySearch, setBuySearch] = useState("");
   const [historyFilter, setHistoryFilter] = useState("all");
 
@@ -200,18 +199,6 @@ export default function App() {
     setModal(null);
   }
 
-  function confirmDeposit() {
-    setCash((c) => c + nominal);
-    pushHistory({ type: "deposit", label: "Setor Dana", amount: nominal });
-    setModal(null);
-  }
-
-  function confirmWithdraw() {
-    if (nominal > cash) return;
-    setCash((c) => c - nominal);
-    pushHistory({ type: "withdraw", label: "Tarik Dana", amount: nominal });
-    setModal(null);
-  }
 
   const filteredHistory = history.filter((h) => historyFilter === "all" || h.type === historyFilter);
   const filteredUniverse = STOCK_UNIVERSE.filter((s) =>
@@ -228,7 +215,7 @@ export default function App() {
     [...history].reverse().forEach((h) => {
       let line = `${h.date} — ${h.label}`;
       if (h.lots) line += ` (${h.lots} lot @ ${num(h.price)})`;
-      if (h.amount != null) line += ` : ${h.type === "withdraw" ? "-" : "+"}${num(h.amount)}`;
+      if (h.amount != null) line += ` : ${h.type === "sell" ? "+" : (h.type === "buy" ? "-" : "")}${num(h.amount)}`;
       lines.push(line);
     });
     lines.push("");
@@ -241,8 +228,6 @@ export default function App() {
   const iconFor = (type) => {
     if (type === "buy") return <ArrowUpCircle size={20} color={GREEN} />;
     if (type === "sell") return <ArrowDownCircle size={20} color={RED} />;
-    if (type === "deposit") return <TrendingUp size={20} color="#4EA1FF" />;
-    if (type === "withdraw") return <TrendingDown size={20} color="#F5A524" />;
     if (type === "suspend") return <Ban size={20} color={RED} />;
     return <AlertTriangle size={20} color="#F5A524" />;
   };
@@ -374,7 +359,6 @@ export default function App() {
             <div className="flex gap-2 mb-3 overflow-x-auto">
               {[
                 { k: "all", l: "Semua" }, { k: "buy", l: "Beli" }, { k: "sell", l: "Jual" },
-                { k: "deposit", l: "Setor" }, { k: "withdraw", l: "Tarik" },
                 { k: "alert", l: "Info Pasar" }, { k: "suspend", l: "Suspensi" },
               ].map((f) => (
                 <button
@@ -403,8 +387,8 @@ export default function App() {
                     </p>
                   </div>
                   {h.amount != null && (
-                    <p className="text-sm font-semibold" style={{ color: h.type === "sell" || h.type === "deposit" ? GREEN : (h.type === "withdraw" ? RED : TEXT) }}>
-                      {h.type === "withdraw" ? "-" : "+"}{num(h.amount)}
+                    <p className="text-sm font-semibold" style={{ color: h.type === "sell" ? GREEN : TEXT }}>
+                      {h.type === "sell" ? "+" : "-"}{num(h.amount)}
                     </p>
                   )}
                 </div>
@@ -413,48 +397,12 @@ export default function App() {
           </div>
         )}
 
-        {tab === "wallet" && (
-          <div className="px-4">
-            <div className="rounded-xl border p-5" style={{ background: CARD, borderColor: BORDER }}>
-              <p className="text-xs" style={{ color: MUTED }}>Saldo Tunai</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: TEXT }}>{rupiah(cash)}</p>
-              <div className="flex gap-3 mt-4">
-                <button onClick={() => { setNominal(5000000); setModal("deposit"); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold"
-                  style={{ background: GREEN, color: "#052E17" }}>
-                  <ArrowUpCircle size={16} /> Setor
-                </button>
-                <button onClick={() => { setNominal(1000000); setModal("withdraw"); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold"
-                  style={{ background: "#1C1D20", color: TEXT, border: `1px solid ${BORDER}` }}>
-                  <ArrowDownCircle size={16} /> Tarik
-                </button>
-              </div>
-            </div>
-            <h3 className="font-semibold text-sm mt-5 mb-2" style={{ color: TEXT }}>Aktivitas Dompet Terbaru</h3>
-            <div className="rounded-xl border divide-y" style={{ background: CARD, borderColor: BORDER }}>
-              {history.filter((h) => h.type === "deposit" || h.type === "withdraw").slice(0, 5).map((h) => (
-                <div key={h.id} className="flex items-center gap-3 px-4 py-3" style={{ borderColor: BORDER }}>
-                  {iconFor(h.type)}
-                  <div className="flex-1">
-                    <p className="text-sm font-medium" style={{ color: TEXT }}>{h.label}</p>
-                    <p className="text-[11px]" style={{ color: MUTED }}>{h.date}</p>
-                  </div>
-                  <p className="text-sm font-semibold" style={{ color: h.type === "deposit" ? GREEN : RED }}>
-                    {h.type === "withdraw" ? "-" : "+"}{num(h.amount)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 border-t flex justify-around py-2" style={{ background: CARD, borderColor: BORDER }}>
         {[
           { k: "portfolio", l: "Portofolio", icon: PieChart },
           { k: "history", l: "Riwayat", icon: ClipboardList },
-          { k: "wallet", l: "Dompet", icon: Wallet },
         ].map((t) => (
           <button key={t.k} onClick={() => setTab(t.k)} className="flex flex-col items-center gap-0.5 px-4">
             <t.icon size={20} color={tab === t.k ? GREEN : MUTED} />
@@ -552,46 +500,6 @@ export default function App() {
         </Modal>
       )}
 
-      {modal === "deposit" && (
-        <Modal title="Setor Dana" onClose={() => setModal(null)}>
-          <label className="text-sm block mb-1" style={{ color: MUTED }}>Nominal Setoran</label>
-          <input
-            type="number"
-            value={nominal}
-            onChange={(e) => setNominal(Number(e.target.value))}
-            className="w-full border rounded-lg px-3 py-2.5 text-sm font-medium mb-5 bg-transparent"
-            style={{ borderColor: BORDER, color: TEXT }}
-          />
-          <button onClick={confirmDeposit} disabled={nominal <= 0} className="w-full py-3 rounded-lg font-semibold disabled:opacity-40" style={{ background: GREEN, color: "#052E17" }}>
-            Konfirmasi Setor
-          </button>
-        </Modal>
-      )}
-
-      {modal === "withdraw" && (
-        <Modal title="Tarik Dana" onClose={() => setModal(null)}>
-          <p className="text-xs mb-1" style={{ color: MUTED }}>Saldo yang dapat ditarik</p>
-          <p className="text-lg font-bold mb-4" style={{ color: GREEN }}>{rupiah(cash)}</p>
-          <label className="text-sm block mb-1" style={{ color: MUTED }}>Nominal Penarikan</label>
-          <input
-            type="number"
-            value={nominal}
-            onChange={(e) => setNominal(Number(e.target.value))}
-            className="w-full border rounded-lg px-3 py-2.5 text-sm font-medium mb-4 bg-transparent"
-            style={{ borderColor: BORDER, color: TEXT }}
-          />
-          <div className="border rounded-lg px-3 py-2.5 mb-1" style={{ borderColor: BORDER }}>
-            <p className="text-xs mb-1" style={{ color: MUTED }}>Transfer ke</p>
-            <p className="text-sm font-semibold" style={{ color: TEXT }}>MANDIRI · 724515846215</p>
-            <p className="text-xs" style={{ color: MUTED }}>Zainul Arifin Sinulingga</p>
-          </div>
-          {nominal > cash && <p className="text-xs my-2" style={{ color: RED }}>Nominal melebihi saldo tersedia.</p>}
-          <p className="text-xs my-3" style={{ color: MUTED }}>Dana akan ditransfer maksimal dalam 2 hari kerja.</p>
-          <button onClick={confirmWithdraw} disabled={nominal <= 0 || nominal > cash} className="w-full py-3 rounded-lg font-semibold disabled:opacity-40" style={{ background: GREEN, color: "#052E17" }}>
-            Submit
-          </button>
-        </Modal>
-      )}
     </div>
   );
 }
