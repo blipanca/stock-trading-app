@@ -21,8 +21,8 @@ const num2 = (n) => (Math.round(n * 100) / 100).toLocaleString("id-ID", { minimu
 
 const DEMO_PROFILE_NAME = "Sukmono_82";
 
-// Anchor prices define the story; interpolatePriceHistory expands them into a denser,
-// deterministic market-like series so the portfolio chart has natural pullbacks and rebounds.
+// Sparse market observations are expanded into daily-like points.
+// Each stock keeps an independent path and repeatable irregular session movement.
 const PRICE_ANCHORS = [
   // Each stock follows its own path: banks, telco, auto, energy and speculative small-cap
   // do not peak and fall at the same time.
@@ -60,11 +60,26 @@ function interpolatePriceHistory() {
       STOCK_CODES.forEach((code, codeIndex) => {
         const base = a[code] + (b[code] - a[code]) * t;
         // Multiple sine waves create repeatable market noise without random values changing on refresh.
-        const phase = codeIndex * 1.37;
-        const wave =
-          Math.sin((s * stepsPerSegment + i) * (1.21 + codeIndex * 0.08) + phase) * VOLATILITY[code] +
-          Math.sin((s * stepsPerSegment + i) * (0.47 + codeIndex * 0.03) + phase * 0.7) * VOLATILITY[code] * 0.6;
-        point[code] = Math.round(base * (1 + wave));
+        const k = s * stepsPerSegment + i;
+        // Deterministic pseudo-random movement: irregular, repeatable, and different per stock.
+        const seed = Math.sin((k + 1) * 12.9898 + (codeIndex + 1) * 78.233) * 43758.5453;
+        const noise = (seed - Math.floor(seed) - 0.5) * 2;
+        const seed2 = Math.sin((k + 7) * 4.123 + (codeIndex + 3) * 19.771) * 24634.6345;
+        const noise2 = (seed2 - Math.floor(seed2) - 0.5) * 2;
+
+        // Some sessions barely move; a few sessions carry a larger shock/rebound.
+        const quietSession = [8, 9, 27, 28, 45, 46, 61].includes(k) ? 0.18 : 1;
+        const marketShock = ({ 31: -0.018, 32: -0.009, 33: 0.012, 55: -0.014, 56: 0.010 }[k] || 0);
+        const stockShock =
+          code === "WBSA" ? ({ 24: 0.055, 25: -0.042, 49: -0.060 }[k] || 0) :
+          code === "ADRO" ? ({ 38: 0.018, 57: 0.015 }[k] || 0) :
+          code === "BBRI" ? ({ 32: -0.012, 33: 0.008 }[k] || 0) : 0;
+
+        const move = (noise * 0.72 + noise2 * 0.28) * VOLATILITY[code] * quietSession
+          + marketShock * (code === "ADRO" ? 0.45 : code === "WBSA" ? 1.35 : 1)
+          + stockShock;
+
+        point[code] = Math.round(base * (1 + move));
       });
 
       points.push(point);
@@ -139,21 +154,24 @@ function SimBanner() {
 
 function TickerRibbon({ holdings }) {
   const latestPrices = Object.fromEntries(holdings.map((h) => [h.code, h.currentPrice]));
-  const liveUniverse = STOCK_UNIVERSE.map((s) => ({
-    ...s,
-    price: latestPrices[s.code] ?? s.price,
-  }));
+  const previousPoint = PRICE_HISTORY[PRICE_HISTORY.length - 2] || {};
+  const liveUniverse = STOCK_UNIVERSE.map((s) => {
+    const price = latestPrices[s.code] ?? s.price;
+    const previousPrice = previousPoint[s.code] ?? price;
+    return { ...s, price, previousPrice, change: price - previousPrice };
+  });
   const items = liveUniverse.concat(liveUniverse);
   return (
     <div className="overflow-hidden border-b" style={{ background: CARD, borderColor: BORDER }}>
       <div className="flex gap-6 py-1.5 px-4 whitespace-nowrap animate-[ticker_28s_linear_infinite]">
         {items.map((s, i) => {
-          const up = i % 3 !== 0;
+          const up = s.change > 0;
+          const flat = s.change === 0;
           return (
             <span key={i} className="text-xs font-medium flex items-center gap-1" style={{ color: MUTED }}>
               {s.code}
-              <span style={{ color: up ? GREEN : RED }}>
-                {rupiah(s.price)} {up ? "▲" : "▼"}
+              <span style={{ color: flat ? MUTED : up ? GREEN : RED }}>
+                {rupiah(s.price)} {flat ? "—" : up ? "▲" : "▼"}
               </span>
             </span>
           );
