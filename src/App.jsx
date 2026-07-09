@@ -3,7 +3,7 @@ import {
   PieChart, ClipboardList, ChevronRight, TrendingUp,
   AlertTriangle, Ban, UserCircle2, X
 } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, YAxis } from "recharts";
+import { AreaChart, Area, ResponsiveContainer, YAxis, ReferenceLine } from "recharts";
 
 const BG = "#0B0B0D";
 const CARD = "#0F1012";
@@ -34,7 +34,7 @@ const PRICE_ANCHORS = [
   { date: "2026-06-18", BBCA: 9640, BBRI: 4380, TLKM: 2610, ASII: 4960, ADRO: 1880, WBSA: 1210 },
   { date: "2026-06-24", BBCA: 9140, BBRI: 4020, TLKM: 2390, ASII: 4660, ADRO: 1510, WBSA: 510 },
   { date: "2026-06-27", BBCA: 9320, BBRI: 4160, TLKM: 2480, ASII: 4780, ADRO: 1580, WBSA: 620 },
-  { date: "2026-07-02", BBCA: 8900, BBRI: 4000, TLKM: 2400, ASII: 4850, ADRO: 1450, WBSA: 290 },
+  { date: "2026-07-02", BBCA: 6150, BBRI: 2760, TLKM: 2490, ASII: 4810, ADRO: 2300, WBSA: 290 },
 ];
 
 const STOCK_CODES = ["BBCA", "BBRI", "TLKM", "ASII", "ADRO", "WBSA"];
@@ -50,7 +50,7 @@ function interpolatePriceHistory() {
 
     for (let i = 0; i < stepsPerSegment; i++) {
       const t = i / stepsPerSegment;
-      const point = { date: i === 0 ? a.date : "" };
+      const point = { date: i === 0 ? a.date : `${a.date}-${i}` };
 
       STOCK_CODES.forEach((code, codeIndex) => {
         const base = a[code] + (b[code] - a[code]) * t;
@@ -91,18 +91,17 @@ const STOCK_UNIVERSE = [
 // WBSA illustrates a stock that spiked on speculation, then crashed drastically.
 // ADRO is flagged "suspended" (frozen at last traded price) as part of the illustration.
 const INITIAL_HOLDINGS = [
-  { code: "BBCA", name: "Bank Central Asia", lots: 350, avgPrice: 9700, currentPrice: 8900 },
-  { code: "BBRI", name: "Bank Rakyat Indonesia", lots: 800, avgPrice: 4750, currentPrice: 4000 },
-  { code: "TLKM", name: "Telekomunikasi Indonesia", lots: 1350, avgPrice: 2800, currentPrice: 2400 },
-  { code: "ASII", name: "Astra International", lots: 650, avgPrice: 5200, currentPrice: 4850 },
-  { code: "ADRO", name: "Alamtri Resources", lots: 1450, avgPrice: 2300, currentPrice: 1450, suspended: true },
+  { code: "BBCA", name: "Bank Central Asia", lots: 350, avgPrice: 9700, currentPrice: 6150 },
+  { code: "BBRI", name: "Bank Rakyat Indonesia", lots: 800, avgPrice: 4750, currentPrice: 2760 },
+  { code: "TLKM", name: "Telekomunikasi Indonesia", lots: 1350, avgPrice: 2800, currentPrice: 2490 },
+  { code: "ASII", name: "Astra International", lots: 650, avgPrice: 5200, currentPrice: 4810 },
+  { code: "ADRO", name: "Alamtri Resources", lots: 1450, avgPrice: 2300, currentPrice: 2300 },
   { code: "WBSA", name: "Wahana Bumi Sukses Abadi (fiktif)", lots: 3000, avgPrice: 770, currentPrice: 290 },
 ];
 
 // Ordered newest-first, matching how new transactions are prepended.
 const INITIAL_HISTORY = [
-  { id: 17, type: "suspend", label: "ADRO dihentikan sementara (suspensi) oleh BEI — volatilitas ekstrem", date: "2026-07-01 10:00" },
-  { id: 16, type: "alert", label: "Keputusan: trading dihentikan sementara, fokus menjaga likuiditas", date: "2026-06-27 15:45" },
+    { id: 16, type: "alert", label: "Keputusan: trading dihentikan sementara, fokus menjaga likuiditas", date: "2026-06-27 15:45" },
   { id: 15, type: "alert", label: "Gelombang risk-off ketiga setelah eskalasi geopolitik", date: "2026-06-24 08:15" },
   { id: 14, type: "alert", label: "Relief rally: bargain hunting mendorong rebound sementara", date: "2026-06-18 14:20" },
   { id: 13, type: "alert", label: "Risk-off kedua: investor mengurangi eksposur aset berisiko", date: "2026-06-12 09:10" },
@@ -258,6 +257,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col" style={{ background: BG, fontFamily: "Inter, system-ui, sans-serif" }}>
       <SimBanner />
       <TickerRibbon holdings={holdings} />
+      <div className="text-center text-[9px] py-1" style={{ color: MUTED, background: CARD }}>Harga pasar · 9 Jul 2026</div>
 
       <div className="flex items-center gap-2 px-5 pt-4 pb-2">
         <UserCircle2 size={22} color={MUTED} />
@@ -305,6 +305,12 @@ export default function App() {
                       </linearGradient>
                     </defs>
                     <YAxis hide domain={["dataMin - 30000000", "dataMax + 30000000"]} />
+                    <ReferenceLine
+                      x="2026-06-27"
+                      stroke="#F5C244"
+                      strokeDasharray="3 3"
+                      label={{ value: "Paused", position: "insideTopRight", fill: "#F5C244", fontSize: 9 }}
+                    />
                     <Area
                       type="linear"
                       dataKey="equity"
@@ -318,7 +324,7 @@ export default function App() {
               </div>
               <div className="flex justify-between -mt-1 mb-1">
                 <span className="text-[9px]" style={{ color: MUTED }}>10 Apr</span>
-                <span className="text-[9px]" style={{ color: MUTED }}>18 Jun</span>
+                <span className="text-[9px]" style={{ color: MUTED }}>20 Mei</span>
                 <span className="text-[9px]" style={{ color: MUTED }}>2 Jul</span>
               </div>
               <button className="w-full flex items-center justify-between pt-3 mt-2 border-t" style={{ borderColor: BORDER }}>
