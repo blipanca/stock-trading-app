@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from "react";
 import {
   PieChart, ClipboardList, ChevronRight, TrendingUp,
-  AlertTriangle, Ban, UserCircle2, X
+  AlertTriangle, UserCircle2, X
 } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, YAxis, ReferenceLine } from "recharts";
+import { AreaChart, Area, ResponsiveContainer, YAxis } from "recharts";
 
 const BG = "#0B0B0D";
 const CARD = "#0F1012";
@@ -24,17 +24,22 @@ const DEMO_PROFILE_NAME = "Sukmono_82";
 // Anchor prices define the story; interpolatePriceHistory expands them into a denser,
 // deterministic market-like series so the portfolio chart has natural pullbacks and rebounds.
 const PRICE_ANCHORS = [
-  { date: "2026-04-10", BBCA: 9700, BBRI: 4750, TLKM: 2800, ASII: 5200, ADRO: 2300, WBSA: 770 },
-  { date: "2026-04-24", BBCA: 9925, BBRI: 4830, TLKM: 2890, ASII: 5340, ADRO: 2440, WBSA: 940 },
-  { date: "2026-05-08", BBCA: 10075, BBRI: 4890, TLKM: 2950, ASII: 5430, ADRO: 2530, WBSA: 1420 },
-  { date: "2026-05-20", BBCA: 9975, BBRI: 4660, TLKM: 2810, ASII: 5190, ADRO: 2320, WBSA: 2450 },
-  { date: "2026-05-29", BBCA: 9550, BBRI: 4310, TLKM: 2580, ASII: 4880, ADRO: 1950, WBSA: 1580 },
-  { date: "2026-06-05", BBCA: 9825, BBRI: 4520, TLKM: 2720, ASII: 5070, ADRO: 2110, WBSA: 1840 },
-  { date: "2026-06-12", BBCA: 9360, BBRI: 4120, TLKM: 2460, ASII: 4740, ADRO: 1710, WBSA: 990 },
-  { date: "2026-06-18", BBCA: 9640, BBRI: 4380, TLKM: 2610, ASII: 4960, ADRO: 1880, WBSA: 1210 },
-  { date: "2026-06-24", BBCA: 9140, BBRI: 4020, TLKM: 2390, ASII: 4660, ADRO: 1510, WBSA: 510 },
-  { date: "2026-06-27", BBCA: 9320, BBRI: 4160, TLKM: 2480, ASII: 4780, ADRO: 1580, WBSA: 620 },
-  { date: "2026-07-02", BBCA: 6150, BBRI: 2760, TLKM: 2490, ASII: 4810, ADRO: 2300, WBSA: 290 },
+  // Each stock follows its own path: banks, telco, auto, energy and speculative small-cap
+  // do not peak and fall at the same time.
+  { date: "2026-04-10", BBCA: 9688, BBRI: 4736, TLKM: 2794, ASII: 5188, ADRO: 2286, WBSA: 764 },
+  { date: "2026-04-17", BBCA: 9825, BBRI: 4610, TLKM: 2840, ASII: 5110, ADRO: 2370, WBSA: 720 },
+  { date: "2026-04-24", BBCA: 9750, BBRI: 4780, TLKM: 2760, ASII: 5260, ADRO: 2440, WBSA: 860 },
+  { date: "2026-05-01", BBCA: 10025, BBRI: 4860, TLKM: 2910, ASII: 5190, ADRO: 2390, WBSA: 1120 },
+  { date: "2026-05-08", BBCA: 9940, BBRI: 4690, TLKM: 2960, ASII: 5380, ADRO: 2520, WBSA: 980 },
+  { date: "2026-05-15", BBCA: 10150, BBRI: 4510, TLKM: 2870, ASII: 5310, ADRO: 2610, WBSA: 1460 },
+  { date: "2026-05-22", BBCA: 9860, BBRI: 4620, TLKM: 3010, ASII: 5120, ADRO: 2480, WBSA: 1210 },
+  { date: "2026-05-29", BBCA: 9525, BBRI: 4380, TLKM: 2920, ASII: 4970, ADRO: 2560, WBSA: 890 },
+  { date: "2026-06-05", BBCA: 9710, BBRI: 4460, TLKM: 2810, ASII: 5060, ADRO: 2690, WBSA: 1030 },
+  { date: "2026-06-12", BBCA: 9440, BBRI: 4210, TLKM: 2860, ASII: 4890, ADRO: 2580, WBSA: 760 },
+  { date: "2026-06-19", BBCA: 9580, BBRI: 4320, TLKM: 2740, ASII: 5010, ADRO: 2720, WBSA: 610 },
+  { date: "2026-06-26", BBCA: 9360, BBRI: 4090, TLKM: 2810, ASII: 4930, ADRO: 2650, WBSA: 470 },
+  { date: "2026-07-02", BBCA: 9480, BBRI: 4170, TLKM: 2760, ASII: 5075, ADRO: 2710, WBSA: 390 },
+  { date: "2026-07-09", BBCA: 9575, BBRI: 4260, TLKM: 2840, ASII: 5260, ADRO: 2760, WBSA: 430 },
 ];
 
 const STOCK_CODES = ["BBCA", "BBRI", "TLKM", "ASII", "ADRO", "WBSA"];
@@ -55,10 +60,10 @@ function interpolatePriceHistory() {
       STOCK_CODES.forEach((code, codeIndex) => {
         const base = a[code] + (b[code] - a[code]) * t;
         // Multiple sine waves create repeatable market noise without random values changing on refresh.
-        const turbulence = s >= 4 ? 1.65 : 1;
+        const phase = codeIndex * 1.37;
         const wave =
-          Math.sin((s * stepsPerSegment + i) * 1.73 + codeIndex * 0.91) * VOLATILITY[code] * turbulence +
-          Math.sin((s * stepsPerSegment + i) * 0.61 + codeIndex * 1.37) * VOLATILITY[code] * 0.55 * turbulence;
+          Math.sin((s * stepsPerSegment + i) * (1.21 + codeIndex * 0.08) + phase) * VOLATILITY[code] +
+          Math.sin((s * stepsPerSegment + i) * (0.47 + codeIndex * 0.03) + phase * 0.7) * VOLATILITY[code] * 0.6;
         point[code] = Math.round(base * (1 + wave));
       });
 
@@ -73,48 +78,46 @@ function interpolatePriceHistory() {
 const PRICE_HISTORY = interpolatePriceHistory();
 
 const STOCK_UNIVERSE = [
-  { code: "TLKM", name: "Telekomunikasi Indonesia", price: 3000, sector: "Telco" },
-  { code: "BBRI", name: "Bank Rakyat Indonesia", price: 4550, sector: "Bank" },
-  { code: "BBCA", name: "Bank Central Asia", price: 9825, sector: "Bank" },
-  { code: "ASII", name: "Astra International", price: 5100, sector: "Otomotif" },
-  { code: "ADRO", name: "Alamtri Resources", price: 2350, sector: "Energi" },
+  { code: "TLKM", name: "Telekomunikasi Indonesia", price: 2840, sector: "Telco" },
+  { code: "BBRI", name: "Bank Rakyat Indonesia", price: 4260, sector: "Bank" },
+  { code: "BBCA", name: "Bank Central Asia", price: 9575, sector: "Bank" },
+  { code: "ASII", name: "Astra International", price: 5260, sector: "Otomotif" },
+  { code: "ADRO", name: "Alamtri Resources", price: 2760, sector: "Energi" },
   { code: "WSKT", name: "Waskita Karya", price: 202, sector: "Konstruksi" },
   { code: "KAEF", name: "Kimia Farma", price: 985, sector: "Farmasi" },
   { code: "TRIO", name: "Trisula Textile Industries", price: 4650, sector: "Tekstil" },
   { code: "PGAS", name: "Perusahaan Gas Negara", price: 1620, sector: "Energi" },
   { code: "UNVR", name: "Unilever Indonesia", price: 3200, sector: "Konsumer" },
-  { code: "WBSA", name: "Wahana Bumi Sukses Abadi (fiktif)", price: 290, sector: "Tambang" },
+  { code: "WBSA", name: "Wahana Bumi Sukses Abadi (fiktif)", price: 430, sector: "Tambang" },
 ];
 
-// Illustrative demo holdings: ~Rp 2 miliar deployed across 8-13 Apr 2026.
-// Prices marked down by ~2 Jul 2026 to reflect a fictional political-risk selloff.
-// WBSA illustrates a stock that spiked on speculation, then crashed drastically.
-// ADRO is flagged "suspended" (frozen at last traded price) as part of the illustration.
+// Illustrative portfolio with staggered entries and non-round position sizes for a more natural account history.
+// Prices are marked to the 9 Jul 2026 market snapshot used by this prototype.
+// WBSA remains a fictional speculative holding that rose sharply before a severe correction.
 const INITIAL_HOLDINGS = [
-  { code: "BBCA", name: "Bank Central Asia", lots: 350, avgPrice: 9700, currentPrice: 6150 },
-  { code: "BBRI", name: "Bank Rakyat Indonesia", lots: 800, avgPrice: 4750, currentPrice: 2760 },
-  { code: "TLKM", name: "Telekomunikasi Indonesia", lots: 1350, avgPrice: 2800, currentPrice: 2490 },
-  { code: "ASII", name: "Astra International", lots: 650, avgPrice: 5200, currentPrice: 4810 },
-  { code: "ADRO", name: "Alamtri Resources", lots: 1450, avgPrice: 2300, currentPrice: 2300 },
-  { code: "WBSA", name: "Wahana Bumi Sukses Abadi (fiktif)", lots: 3000, avgPrice: 770, currentPrice: 290 },
+  { code: "BBCA", name: "Bank Central Asia", lots: 347, avgPrice: 9688, currentPrice: 9575 },
+  { code: "BBRI", name: "Bank Rakyat Indonesia", lots: 786, avgPrice: 4736, currentPrice: 4260 },
+  { code: "TLKM", name: "Telekomunikasi Indonesia", lots: 1328, avgPrice: 2794, currentPrice: 2840 },
+  { code: "ASII", name: "Astra International", lots: 643, avgPrice: 5188, currentPrice: 5260 },
+  { code: "ADRO", name: "Alamtri Resources", lots: 1437, avgPrice: 2286, currentPrice: 2760 },
+  { code: "WBSA", name: "Wahana Bumi Sukses Abadi (fiktif)", lots: 2984, avgPrice: 764, currentPrice: 430 },
 ];
 
 // Ordered newest-first, matching how new transactions are prepended.
 const INITIAL_HISTORY = [
-    { id: 16, type: "alert", label: "Keputusan: trading dihentikan sementara, fokus menjaga likuiditas", date: "2026-06-27 15:45" },
-  { id: 15, type: "alert", label: "Gelombang risk-off ketiga setelah eskalasi geopolitik", date: "2026-06-24 08:15" },
+  { id: 15, type: "alert", label: "Tekanan jual meningkat seiring eskalasi geopolitik global", date: "2026-06-24 08:15" },
   { id: 14, type: "alert", label: "Relief rally: bargain hunting mendorong rebound sementara", date: "2026-06-18 14:20" },
-  { id: 13, type: "alert", label: "Risk-off kedua: investor mengurangi eksposur aset berisiko", date: "2026-06-12 09:10" },
-  { id: 12, type: "alert", label: "Pasar rebound sementara setelah tekanan jual tajam", date: "2026-06-05 15:10" },
-  { id: 11, type: "alert", label: "Shock geopolitik pertama memicu sell-off lintas sektor", date: "2026-05-29 09:05" },
+  { id: 13, type: "alert", label: "Investor kembali mengurangi eksposur pada aset berisiko", date: "2026-06-12 09:10" },
+  { id: 12, type: "alert", label: "Pasar rebound setelah tekanan jual pada akhir Mei", date: "2026-06-05 15:10" },
+  { id: 11, type: "alert", label: "Sentimen geopolitik memicu sell-off lintas sektor", date: "2026-05-29 09:05" },
   { id: 10, type: "alert", label: "WBSA melonjak tajam ditopang spekulasi ekspansi bisnis", date: "2026-05-20 08:00" },
-  { id: 7, type: "buy", label: "Beli WBSA", code: "WBSA", lots: 3000, price: 770, amount: 231000000, date: "2026-04-13 14:00" },
-  { id: 6, type: "buy", label: "Beli ADRO", code: "ADRO", lots: 1450, price: 2300, amount: 333500000, date: "2026-04-11 13:20" },
-  { id: 5, type: "buy", label: "Beli ASII", code: "ASII", lots: 650, price: 5200, amount: 338000000, date: "2026-04-10 11:05" },
-  { id: 4, type: "buy", label: "Beli TLKM", code: "TLKM", lots: 1350, price: 2800, amount: 378000000, date: "2026-04-10 10:20" },
-  { id: 3, type: "buy", label: "Beli BBRI", code: "BBRI", lots: 800, price: 4750, amount: 380000000, date: "2026-04-10 09:55" },
-  { id: 2, type: "buy", label: "Beli BBCA", code: "BBCA", lots: 350, price: 9700, amount: 339500000, date: "2026-04-10 09:30" },
-  { id: 1, type: "alert", label: "Saldo awal simulasi trading ditetapkan Rp450.000.000", date: "2026-04-10 09:00" },
+  { id: 7, type: "buy", label: "Beli WBSA", code: "WBSA", lots: 2875, price: 758, amount: 217925000, date: "2026-04-15 14:07" },
+  { id: 6, type: "buy", label: "Beli ADRO", code: "ADRO", lots: 1437, price: 2287, amount: 328611900, date: "2026-04-14 13:18" },
+  { id: 5, type: "buy", label: "Beli ASII", code: "ASII", lots: 642, price: 5186, amount: 332941200, date: "2026-04-13 11:12" },
+  { id: 4, type: "buy", label: "Beli TLKM", code: "TLKM", lots: 1328, price: 2794, amount: 371043200, date: "2026-04-13 10:26" },
+  { id: 3, type: "buy", label: "Beli BBRI", code: "BBRI", lots: 786, price: 4736, amount: 372249600, date: "2026-04-10 10:03" },
+  { id: 2, type: "buy", label: "Beli BBCA", code: "BBCA", lots: 347, price: 9688, amount: 336173600, date: "2026-04-10 09:34" },
+  { id: 1, type: "alert", label: "Saldo awal portofolio tercatat Rp2.408.750.000", date: "2026-04-10 09:00" },
 ];
 
 function computeHolding(h) {
@@ -161,23 +164,6 @@ function TickerRibbon({ holdings }) {
   );
 }
 
-function TradingPauseNotice() {
-  return (
-    <div className="rounded-xl border px-4 py-3 mb-4 flex items-start gap-3"
-      style={{ background: "#17130B", borderColor: "#4A3713" }}>
-      <Ban size={18} color="#F5C244" className="mt-0.5 shrink-0" />
-      <div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-semibold" style={{ color: "#F5C244" }}>Trading Paused</p>
-          <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "#3A2A0A", color: "#F5C244" }}>sejak 27 Jun 2026</span>
-        </div>
-        <p className="text-[11px] mt-1 leading-relaxed" style={{ color: MUTED }}>
-          Tidak ada transaksi baru sementara waktu karena volatilitas geopolitik dan risiko pasar yang tinggi.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 function Modal({ title, onClose, children }) {
   return (
@@ -207,7 +193,7 @@ function StatCell({ label, value, color }) {
 
 export default function App() {
   const [tab, setTab] = useState("portfolio");
-  const [cash, setCash] = useState(450000000);
+  const [cash, setCash] = useState(449805500);
   const [holdings, setHoldings] = useState(INITIAL_HOLDINGS);
   const [history, setHistory] = useState(INITIAL_HISTORY);
   const [historyFilter, setHistoryFilter] = useState("all");
@@ -249,7 +235,6 @@ export default function App() {
 
 
   const iconFor = (type) => {
-    if (type === "suspend") return <Ban size={20} color={RED} />;
     return <AlertTriangle size={20} color="#F5A524" />;
   };
 
@@ -267,7 +252,6 @@ export default function App() {
       <div className="flex-1 overflow-y-auto pb-24">
         {tab === "portfolio" && (
           <div className="px-4">
-            <TradingPauseNotice />
             <div className="rounded-xl border px-4 py-4 mb-4" style={{ background: CARD, borderColor: BORDER }}>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4">
                 <StatCell label="Saldo Tunai" value={num2(cash)} />
@@ -305,12 +289,6 @@ export default function App() {
                       </linearGradient>
                     </defs>
                     <YAxis hide domain={["dataMin - 30000000", "dataMax + 30000000"]} />
-                    <ReferenceLine
-                      x="2026-06-27"
-                      stroke="#F5C244"
-                      strokeDasharray="3 3"
-                      label={{ value: "Paused", position: "insideTopRight", fill: "#F5C244", fontSize: 9 }}
-                    />
                     <Area
                       type="linear"
                       dataKey="equity"
@@ -325,7 +303,7 @@ export default function App() {
               <div className="flex justify-between -mt-1 mb-1">
                 <span className="text-[9px]" style={{ color: MUTED }}>10 Apr</span>
                 <span className="text-[9px]" style={{ color: MUTED }}>20 Mei</span>
-                <span className="text-[9px]" style={{ color: MUTED }}>2 Jul</span>
+                <span className="text-[9px]" style={{ color: MUTED }}>9 Jul</span>
               </div>
               <button className="w-full flex items-center justify-between pt-3 mt-2 border-t" style={{ borderColor: BORDER }}>
                 <span className="flex items-center gap-2 text-sm" style={{ color: TEXT }}>
@@ -387,7 +365,7 @@ export default function App() {
             <div className="flex gap-2 mb-3 overflow-x-auto">
               {[
                 { k: "all", l: "Semua" }, { k: "buy", l: "Beli" }, { k: "sell", l: "Jual" },
-                { k: "alert", l: "Info Pasar" }, { k: "suspend", l: "Suspensi" },
+                { k: "alert", l: "Info Pasar" },
               ].map((f) => (
                 <button
                   key={f.k}
