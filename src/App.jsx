@@ -24,12 +24,16 @@ const DEMO_PROFILE_NAME = "Sukmono_82";
 // Anchor prices define the story; interpolatePriceHistory expands them into a denser,
 // deterministic market-like series so the portfolio chart has natural pullbacks and rebounds.
 const PRICE_ANCHORS = [
-  { date: "2026-04-08", BBCA: 9700, BBRI: 4750, TLKM: 2800, ASII: 5200, ADRO: 2300, WBSA: 770 },
-  { date: "2026-04-22", BBCA: 9950, BBRI: 4820, TLKM: 2910, ASII: 5350, ADRO: 2460, WBSA: 920 },
-  { date: "2026-05-06", BBCA: 10050, BBRI: 4860, TLKM: 2940, ASII: 5410, ADRO: 2520, WBSA: 1350 },
+  { date: "2026-04-10", BBCA: 9700, BBRI: 4750, TLKM: 2800, ASII: 5200, ADRO: 2300, WBSA: 770 },
+  { date: "2026-04-24", BBCA: 9925, BBRI: 4830, TLKM: 2890, ASII: 5340, ADRO: 2440, WBSA: 940 },
+  { date: "2026-05-08", BBCA: 10075, BBRI: 4890, TLKM: 2950, ASII: 5430, ADRO: 2530, WBSA: 1420 },
   { date: "2026-05-20", BBCA: 9975, BBRI: 4660, TLKM: 2810, ASII: 5190, ADRO: 2320, WBSA: 2450 },
-  { date: "2026-06-03", BBCA: 9725, BBRI: 4410, TLKM: 2670, ASII: 5010, ADRO: 2020, WBSA: 1310 },
-  { date: "2026-06-17", BBCA: 9340, BBRI: 4180, TLKM: 2510, ASII: 4860, ADRO: 1690, WBSA: 690 },
+  { date: "2026-05-29", BBCA: 9550, BBRI: 4310, TLKM: 2580, ASII: 4880, ADRO: 1950, WBSA: 1580 },
+  { date: "2026-06-05", BBCA: 9825, BBRI: 4520, TLKM: 2720, ASII: 5070, ADRO: 2110, WBSA: 1840 },
+  { date: "2026-06-12", BBCA: 9360, BBRI: 4120, TLKM: 2460, ASII: 4740, ADRO: 1710, WBSA: 990 },
+  { date: "2026-06-18", BBCA: 9640, BBRI: 4380, TLKM: 2610, ASII: 4960, ADRO: 1880, WBSA: 1210 },
+  { date: "2026-06-24", BBCA: 9140, BBRI: 4020, TLKM: 2390, ASII: 4660, ADRO: 1510, WBSA: 510 },
+  { date: "2026-06-27", BBCA: 9320, BBRI: 4160, TLKM: 2480, ASII: 4780, ADRO: 1580, WBSA: 620 },
   { date: "2026-07-02", BBCA: 8900, BBRI: 4000, TLKM: 2400, ASII: 4850, ADRO: 1450, WBSA: 290 },
 ];
 
@@ -38,7 +42,7 @@ const VOLATILITY = { BBCA: 0.006, BBRI: 0.009, TLKM: 0.008, ASII: 0.008, ADRO: 0
 
 function interpolatePriceHistory() {
   const points = [];
-  const stepsPerSegment = 8;
+  const stepsPerSegment = 6;
 
   for (let s = 0; s < PRICE_ANCHORS.length - 1; s++) {
     const a = PRICE_ANCHORS[s];
@@ -51,9 +55,10 @@ function interpolatePriceHistory() {
       STOCK_CODES.forEach((code, codeIndex) => {
         const base = a[code] + (b[code] - a[code]) * t;
         // Multiple sine waves create repeatable market noise without random values changing on refresh.
+        const turbulence = s >= 4 ? 1.65 : 1;
         const wave =
-          Math.sin((s * stepsPerSegment + i) * 1.73 + codeIndex * 0.91) * VOLATILITY[code] +
-          Math.sin((s * stepsPerSegment + i) * 0.61 + codeIndex * 1.37) * VOLATILITY[code] * 0.55;
+          Math.sin((s * stepsPerSegment + i) * 1.73 + codeIndex * 0.91) * VOLATILITY[code] * turbulence +
+          Math.sin((s * stepsPerSegment + i) * 0.61 + codeIndex * 1.37) * VOLATILITY[code] * 0.55 * turbulence;
         point[code] = Math.round(base * (1 + wave));
       });
 
@@ -96,18 +101,21 @@ const INITIAL_HOLDINGS = [
 
 // Ordered newest-first, matching how new transactions are prepended.
 const INITIAL_HISTORY = [
-  { id: 12, type: "suspend", label: "ADRO dihentikan sementara (suspensi) oleh BEI — volatilitas ekstrem", date: "2026-07-01 10:00" },
-  { id: 11, type: "alert", label: "WBSA anjlok drastis setelah rencana ekspansi batal terwujud", date: "2026-06-27 08:00" },
-  { id: 10, type: "alert", label: "Tekanan jual berlanjut di sektor perbankan & energi", date: "2026-06-24 08:00" },
-  { id: 9, type: "alert", label: "Sentimen politik menekan pasar — IHSG melemah signifikan", date: "2026-06-16 08:00" },
-  { id: 8, type: "alert", label: "WBSA melonjak tajam ditopang spekulasi ekspansi bisnis", date: "2026-05-20 08:00" },
+  { id: 17, type: "suspend", label: "ADRO dihentikan sementara (suspensi) oleh BEI — volatilitas ekstrem", date: "2026-07-01 10:00" },
+  { id: 16, type: "alert", label: "Keputusan: trading dihentikan sementara, fokus menjaga likuiditas", date: "2026-06-27 15:45" },
+  { id: 15, type: "alert", label: "Gelombang risk-off ketiga setelah eskalasi geopolitik", date: "2026-06-24 08:15" },
+  { id: 14, type: "alert", label: "Relief rally: bargain hunting mendorong rebound sementara", date: "2026-06-18 14:20" },
+  { id: 13, type: "alert", label: "Risk-off kedua: investor mengurangi eksposur aset berisiko", date: "2026-06-12 09:10" },
+  { id: 12, type: "alert", label: "Pasar rebound sementara setelah tekanan jual tajam", date: "2026-06-05 15:10" },
+  { id: 11, type: "alert", label: "Shock geopolitik pertama memicu sell-off lintas sektor", date: "2026-05-29 09:05" },
+  { id: 10, type: "alert", label: "WBSA melonjak tajam ditopang spekulasi ekspansi bisnis", date: "2026-05-20 08:00" },
   { id: 7, type: "buy", label: "Beli WBSA", code: "WBSA", lots: 3000, price: 770, amount: 231000000, date: "2026-04-13 14:00" },
   { id: 6, type: "buy", label: "Beli ADRO", code: "ADRO", lots: 1450, price: 2300, amount: 333500000, date: "2026-04-11 13:20" },
-  { id: 5, type: "buy", label: "Beli ASII", code: "ASII", lots: 650, price: 5200, amount: 338000000, date: "2026-04-09 11:05" },
-  { id: 4, type: "buy", label: "Beli TLKM", code: "TLKM", lots: 1350, price: 2800, amount: 378000000, date: "2026-04-09 09:50" },
-  { id: 3, type: "buy", label: "Beli BBRI", code: "BBRI", lots: 800, price: 4750, amount: 380000000, date: "2026-04-08 10:42" },
-  { id: 2, type: "buy", label: "Beli BBCA", code: "BBCA", lots: 350, price: 9700, amount: 339500000, date: "2026-04-08 10:30" },
-  { id: 1, type: "alert", label: "Saldo awal simulasi trading ditetapkan Rp450.000.000", date: "2026-04-08 09:15" },
+  { id: 5, type: "buy", label: "Beli ASII", code: "ASII", lots: 650, price: 5200, amount: 338000000, date: "2026-04-10 11:05" },
+  { id: 4, type: "buy", label: "Beli TLKM", code: "TLKM", lots: 1350, price: 2800, amount: 378000000, date: "2026-04-10 10:20" },
+  { id: 3, type: "buy", label: "Beli BBRI", code: "BBRI", lots: 800, price: 4750, amount: 380000000, date: "2026-04-10 09:55" },
+  { id: 2, type: "buy", label: "Beli BBCA", code: "BBCA", lots: 350, price: 9700, amount: 339500000, date: "2026-04-10 09:30" },
+  { id: 1, type: "alert", label: "Saldo awal simulasi trading ditetapkan Rp450.000.000", date: "2026-04-10 09:00" },
 ];
 
 function computeHolding(h) {
@@ -150,6 +158,24 @@ function TickerRibbon({ holdings }) {
         })}
       </div>
       <style>{`@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
+    </div>
+  );
+}
+
+function TradingPauseNotice() {
+  return (
+    <div className="rounded-xl border px-4 py-3 mb-4 flex items-start gap-3"
+      style={{ background: "#17130B", borderColor: "#4A3713" }}>
+      <Ban size={18} color="#F5C244" className="mt-0.5 shrink-0" />
+      <div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-semibold" style={{ color: "#F5C244" }}>Trading Paused</p>
+          <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "#3A2A0A", color: "#F5C244" }}>sejak 27 Jun 2026</span>
+        </div>
+        <p className="text-[11px] mt-1 leading-relaxed" style={{ color: MUTED }}>
+          Tidak ada transaksi baru sementara waktu karena volatilitas geopolitik dan risiko pasar yang tinggi.
+        </p>
+      </div>
     </div>
   );
 }
@@ -241,6 +267,7 @@ export default function App() {
       <div className="flex-1 overflow-y-auto pb-24">
         {tab === "portfolio" && (
           <div className="px-4">
+            <TradingPauseNotice />
             <div className="rounded-xl border px-4 py-4 mb-4" style={{ background: CARD, borderColor: BORDER }}>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4">
                 <StatCell label="Saldo Tunai" value={num2(cash)} />
@@ -254,7 +281,7 @@ export default function App() {
               </div>
               <div className="flex items-end justify-between mt-4 mb-1">
                 <div>
-                  <p className="text-[10px]" style={{ color: MUTED }}>Total Equity Return · sejak 8 Apr 2026</p>
+                  <p className="text-[10px]" style={{ color: MUTED }}>Total Equity Return · sejak 10 Apr 2026</p>
                   <p className="text-xs font-semibold tabular-nums" style={{ color: chartChangePct >= 0 ? GREEN : RED }}>
                     {chartChangePct >= 0 ? "+" : ""}{chartChangePct.toFixed(2)}%
                   </p>
@@ -290,8 +317,8 @@ export default function App() {
                 </ResponsiveContainer>
               </div>
               <div className="flex justify-between -mt-1 mb-1">
-                <span className="text-[9px]" style={{ color: MUTED }}>8 Apr</span>
-                <span className="text-[9px]" style={{ color: MUTED }}>20 Mei</span>
+                <span className="text-[9px]" style={{ color: MUTED }}>10 Apr</span>
+                <span className="text-[9px]" style={{ color: MUTED }}>18 Jun</span>
                 <span className="text-[9px]" style={{ color: MUTED }}>2 Jul</span>
               </div>
               <button className="w-full flex items-center justify-between pt-3 mt-2 border-t" style={{ borderColor: BORDER }}>
