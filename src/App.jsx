@@ -21,23 +21,51 @@ const num2 = (n) => (Math.round(n * 100) / 100).toLocaleString("id-ID", { minimu
 
 const DEMO_PROFILE_NAME = "Sukmono_82";
 
-// Historical demo prices. Each series ends exactly at the holding's currentPrice.
-// Portfolio performance is calculated from these prices instead of a decorative static curve.
-const PRICE_HISTORY = [
-  { date: "8 Apr",  BBCA: 9700, BBRI: 4750, TLKM: 2800, ASII: 5200, ADRO: 2300, WBSA: 770 },
-  { date: "15 Apr", BBCA: 9825, BBRI: 4680, TLKM: 2860, ASII: 5280, ADRO: 2380, WBSA: 810 },
-  { date: "22 Apr", BBCA: 9950, BBRI: 4820, TLKM: 2910, ASII: 5350, ADRO: 2460, WBSA: 920 },
-  { date: "29 Apr", BBCA: 9875, BBRI: 4740, TLKM: 2870, ASII: 5260, ADRO: 2410, WBSA: 1080 },
-  { date: "6 Mei",  BBCA: 10050, BBRI: 4860, TLKM: 2940, ASII: 5410, ADRO: 2520, WBSA: 1350 },
-  { date: "13 Mei", BBCA: 10125, BBRI: 4790, TLKM: 2890, ASII: 5330, ADRO: 2470, WBSA: 1780 },
-  { date: "20 Mei", BBCA: 9975, BBRI: 4660, TLKM: 2810, ASII: 5190, ADRO: 2320, WBSA: 2450 },
-  { date: "27 Mei", BBCA: 9850, BBRI: 4520, TLKM: 2740, ASII: 5080, ADRO: 2180, WBSA: 1880 },
-  { date: "3 Jun",  BBCA: 9725, BBRI: 4410, TLKM: 2670, ASII: 5010, ADRO: 2020, WBSA: 1310 },
-  { date: "10 Jun", BBCA: 9580, BBRI: 4300, TLKM: 2590, ASII: 4930, ADRO: 1860, WBSA: 960 },
-  { date: "17 Jun", BBCA: 9340, BBRI: 4180, TLKM: 2510, ASII: 4860, ADRO: 1690, WBSA: 690 },
-  { date: "24 Jun", BBCA: 9125, BBRI: 4070, TLKM: 2440, ASII: 4780, ADRO: 1530, WBSA: 430 },
-  { date: "2 Jul",  BBCA: 8900, BBRI: 4000, TLKM: 2400, ASII: 4850, ADRO: 1450, WBSA: 290 },
+// Anchor prices define the story; interpolatePriceHistory expands them into a denser,
+// deterministic market-like series so the portfolio chart has natural pullbacks and rebounds.
+const PRICE_ANCHORS = [
+  { date: "2026-04-08", BBCA: 9700, BBRI: 4750, TLKM: 2800, ASII: 5200, ADRO: 2300, WBSA: 770 },
+  { date: "2026-04-22", BBCA: 9950, BBRI: 4820, TLKM: 2910, ASII: 5350, ADRO: 2460, WBSA: 920 },
+  { date: "2026-05-06", BBCA: 10050, BBRI: 4860, TLKM: 2940, ASII: 5410, ADRO: 2520, WBSA: 1350 },
+  { date: "2026-05-20", BBCA: 9975, BBRI: 4660, TLKM: 2810, ASII: 5190, ADRO: 2320, WBSA: 2450 },
+  { date: "2026-06-03", BBCA: 9725, BBRI: 4410, TLKM: 2670, ASII: 5010, ADRO: 2020, WBSA: 1310 },
+  { date: "2026-06-17", BBCA: 9340, BBRI: 4180, TLKM: 2510, ASII: 4860, ADRO: 1690, WBSA: 690 },
+  { date: "2026-07-02", BBCA: 8900, BBRI: 4000, TLKM: 2400, ASII: 4850, ADRO: 1450, WBSA: 290 },
 ];
+
+const STOCK_CODES = ["BBCA", "BBRI", "TLKM", "ASII", "ADRO", "WBSA"];
+const VOLATILITY = { BBCA: 0.006, BBRI: 0.009, TLKM: 0.008, ASII: 0.008, ADRO: 0.012, WBSA: 0.035 };
+
+function interpolatePriceHistory() {
+  const points = [];
+  const stepsPerSegment = 8;
+
+  for (let s = 0; s < PRICE_ANCHORS.length - 1; s++) {
+    const a = PRICE_ANCHORS[s];
+    const b = PRICE_ANCHORS[s + 1];
+
+    for (let i = 0; i < stepsPerSegment; i++) {
+      const t = i / stepsPerSegment;
+      const point = { date: i === 0 ? a.date : "" };
+
+      STOCK_CODES.forEach((code, codeIndex) => {
+        const base = a[code] + (b[code] - a[code]) * t;
+        // Multiple sine waves create repeatable market noise without random values changing on refresh.
+        const wave =
+          Math.sin((s * stepsPerSegment + i) * 1.73 + codeIndex * 0.91) * VOLATILITY[code] +
+          Math.sin((s * stepsPerSegment + i) * 0.61 + codeIndex * 1.37) * VOLATILITY[code] * 0.55;
+        point[code] = Math.round(base * (1 + wave));
+      });
+
+      points.push(point);
+    }
+  }
+
+  points.push({ ...PRICE_ANCHORS[PRICE_ANCHORS.length - 1] });
+  return points;
+}
+
+const PRICE_HISTORY = interpolatePriceHistory();
 
 const STOCK_UNIVERSE = [
   { code: "TLKM", name: "Telekomunikasi Indonesia", price: 3000, sector: "Telco" },
@@ -99,8 +127,13 @@ function SimBanner() {
   );
 }
 
-function TickerRibbon() {
-  const items = STOCK_UNIVERSE.concat(STOCK_UNIVERSE);
+function TickerRibbon({ holdings }) {
+  const latestPrices = Object.fromEntries(holdings.map((h) => [h.code, h.currentPrice]));
+  const liveUniverse = STOCK_UNIVERSE.map((s) => ({
+    ...s,
+    price: latestPrices[s.code] ?? s.price,
+  }));
+  const items = liveUniverse.concat(liveUniverse);
   return (
     <div className="overflow-hidden border-b" style={{ background: CARD, borderColor: BORDER }}>
       <div className="flex gap-6 py-1.5 px-4 whitespace-nowrap animate-[ticker_28s_linear_infinite]">
@@ -198,7 +231,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: BG, fontFamily: "Inter, system-ui, sans-serif" }}>
       <SimBanner />
-      <TickerRibbon />
+      <TickerRibbon holdings={holdings} />
 
       <div className="flex items-center gap-2 px-5 pt-4 pb-2">
         <UserCircle2 size={22} color={MUTED} />
@@ -216,12 +249,12 @@ export default function App() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 mt-4">
                 <StatCell label="P&L" value={(totalPnl >= 0 ? "+" : "") + num2(totalPnl)} color={totalPnl >= 0 ? GREEN : RED} />
-                <StatCell label={totalPnlPct >= 0 ? "Gain" : "Loss"} value={totalPnlPct.toFixed(2) + "%"} color={totalPnl >= 0 ? GREEN : RED} />
+                <StatCell label={totalPnlPct >= 0 ? "P&L Saham" : "P&L Saham"} value={totalPnlPct.toFixed(2) + "%"} color={totalPnl >= 0 ? GREEN : RED} />
                 <StatCell label="Total Equity" value={num2(totalEquity)} />
               </div>
               <div className="flex items-end justify-between mt-4 mb-1">
                 <div>
-                  <p className="text-[10px]" style={{ color: MUTED }}>Performa sejak 8 Apr 2026</p>
+                  <p className="text-[10px]" style={{ color: MUTED }}>Total Equity Return · sejak 8 Apr 2026</p>
                   <p className="text-xs font-semibold tabular-nums" style={{ color: chartChangePct >= 0 ? GREEN : RED }}>
                     {chartChangePct >= 0 ? "+" : ""}{chartChangePct.toFixed(2)}%
                   </p>
@@ -275,7 +308,7 @@ export default function App() {
 
             <div className="rounded-xl border overflow-hidden divide-y" style={{ background: CARD, borderColor: BORDER, borderColorDivide: BORDER }}>
               {computed.map((h) => (
-                <div key={h.code} className="px-4 py-3" style={{ borderColor: BORDER }}>
+                <div key={h.code} className="px-4 py-3.5" style={{ borderColor: BORDER }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <p className="font-semibold text-sm" style={{ color: TEXT }}>{h.code}</p>
@@ -291,21 +324,22 @@ export default function App() {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 min-[380px]:grid-cols-3 gap-2 mt-3">
-                    <div>
-                      <p className="text-sm" style={{ color: TEXT }}>{num2(h.invested)}</p>
-                      <p className="text-[11px]" style={{ color: MUTED }}>Invested</p>
+                  <div className="grid grid-cols-[1fr_auto] gap-4 mt-2 items-end">
+                    <div className="min-w-0">
+                      <p className="text-sm tabular-nums" style={{ color: TEXT }}>{num2(h.marketValue)}</p>
+                      <p className="text-[10px]" style={{ color: MUTED }}>
+                        Nilai pasar · {h.lots} lot · avg {num(h.avgPrice)}
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-sm" style={{ color: h.pnl >= 0 ? GREEN : RED }}>{(h.pnl >= 0 ? "+" : "") + num2(h.pnl)}</p>
-                      <p className="text-[11px]" style={{ color: MUTED }}>P&amp;L</p>
-                    </div>
-                    <div>
-                      <p className="text-sm" style={{ color: h.pnl >= 0 ? GREEN : RED }}>{h.pnlPct.toFixed(2)}%</p>
-                      <p className="text-[11px]" style={{ color: MUTED }}>{h.pnl >= 0 ? "Gain" : "Loss"}</p>
+                    <div className="text-right">
+                      <p className="text-sm font-medium tabular-nums" style={{ color: h.pnl >= 0 ? GREEN : RED }}>
+                        {(h.pnl >= 0 ? "+" : "") + num2(h.pnl)}
+                      </p>
+                      <p className="text-xs font-semibold tabular-nums" style={{ color: h.pnl >= 0 ? GREEN : RED }}>
+                        {h.pnlPct >= 0 ? "+" : ""}{h.pnlPct.toFixed(2)}%
+                      </p>
                     </div>
                   </div>
-                  <p className="text-[11px] mt-1" style={{ color: MUTED }}>{h.lots} lot · avg {num(h.avgPrice)}</p>
                 </div>
               ))}
             </div>
